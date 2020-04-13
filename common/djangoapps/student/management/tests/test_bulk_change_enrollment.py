@@ -90,21 +90,6 @@ class BulkChangeEnrollmentTests(SharedModuleStoreTestCase):
                 CourseEnrollment.objects.get(mode=to_mode, course_id=course.id, user=user)
                 self._assert_mode_changed(mock_tracker, course, user, to_mode)
 
-    def test_with_org_and_course_key(self):
-        """Verify that command raises CommandError when `org` and `course_key` both are given."""
-        self._enroll_users(self.course, self.users, 'audit')
-        CourseModeFactory(course_id=self.course.id, mode_slug='no-id-professional')
-
-        with self.assertRaises(CommandError):
-            call_command(
-                'bulk_change_enrollment',
-                org=self.org,
-                course=text_type(self.course.id),
-                from_mode='audit',
-                to_mode='no-id-professional',
-                commit=True,
-            )
-
     @patch('student.models.tracker')
     def test_with_org_and_invalid_to_mode(self, mock_tracker):
         """Verify that enrollments are changed correctly when org was given."""
@@ -149,7 +134,7 @@ class BulkChangeEnrollmentTests(SharedModuleStoreTestCase):
         self._enroll_users(self.course, self.users, 'audit')
         CourseModeFactory(course_id=self.course.id, mode_slug='no-id-professional')
 
-        with self.assertRaises(CommandError):
+        with self.assertRaises(CommandError) as err:
             args = '--org {org} --from_mode {from_mode} --to_mode {to_mode} --commit'.format(
                 org='fakeX',
                 from_mode='audit',
@@ -157,9 +142,10 @@ class BulkChangeEnrollmentTests(SharedModuleStoreTestCase):
             )
 
             call_command(
-                'bulk_change_enrollment',
-                *args.split(' ')
+                'bulk_change_enrollment', *args.split(' ')
             )
+
+        self.assertEqual('No courses exist for the org "fakeX".', text_type(err.exception))
 
     def test_without_commit(self):
         """Verify that nothing happens when the `commit` flag is not given."""
@@ -185,12 +171,18 @@ class BulkChangeEnrollmentTests(SharedModuleStoreTestCase):
         self._enroll_users(self.course, self.users, 'audit')
         CourseModeFactory(course_id=self.course.id, mode_slug='audit')
 
-        with self.assertRaises(CommandError):
+        args = '--course {course} --from_mode {from_mode}'.format(
+            course='yolo',
+            from_mode='audit'
+        )
+
+        with self.assertRaises(CommandError) as err:
             call_command(
                 'bulk_change_enrollment',
-                course=text_type(self.course.id),
-                from_mode='audit',
+                *args.split(' ')
             )
+
+        self.assertEqual('Error: the following arguments are required: -t/--to_mode', text_type(err.exception))
 
     @ddt.data('from_mode', 'to_mode', 'course')
     def test_without_options(self, option):
@@ -207,19 +199,31 @@ class BulkChangeEnrollmentTests(SharedModuleStoreTestCase):
 
     def test_bad_course_id(self):
         """Verify that the command fails when the given course ID does not parse."""
-        with self.assertRaises(CommandError):
-            call_command('bulk_change_enrollment', from_mode='audit', to_mode='honor', course='yolo', commit=True)
+        args = '--course {course} --from_mode {from_mode} --to_mode {to_mode}'.format(
+            course='yolo',
+            from_mode='audit',
+            to_mode='honor'
+        )
+
+        with self.assertRaises(CommandError) as err:
+            call_command('bulk_change_enrollment', *args.split(' '))
+
+        self.assertEqual('Course ID yolo is invalid.', text_type(err.exception))
 
     def test_nonexistent_course_id(self):
         """Verify that the command fails when the given course does not exist."""
-        with self.assertRaises(CommandError):
+        args = '--course {course} --from_mode {from_mode} --to_mode {to_mode}'.format(
+            course='course-v1:testX+test+2016',
+            from_mode='audit',
+            to_mode='honor'
+        )
+
+        with self.assertRaises(CommandError) as err:
             call_command(
                 'bulk_change_enrollment',
-                from_mode='audit',
-                to_mode='honor',
-                course='course-v1:testX+test+2016',
-                commit=True
+                *args.split(' ')
             )
+        self.assertEqual('The given course course-v1:testX+test+2016 does not exist.', text_type(err.exception))
 
     def _assert_mode_changed(self, mock_tracker, course, user, to_mode):
         """Confirm the analytics event was emitted."""
