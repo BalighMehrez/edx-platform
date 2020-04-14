@@ -683,7 +683,7 @@ class IsCourseStaffEnrollmentTest(TestCase):
                     CourseAccessRoleAssignmentFactory(
                         enrollment=program_course_enrollment
                     )
-    
+
     @ddt.data(
         (1, True),
         (2, False),
