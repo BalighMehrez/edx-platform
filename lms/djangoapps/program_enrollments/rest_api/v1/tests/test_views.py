@@ -900,7 +900,7 @@ class ProgramCourseEnrollmentsGetTests(EnrollmentsDataMixin, APITestCase):
             user=None
         )
 
-        program_course_enrollment_1 = ProgramCourseEnrollmentFactory.create(
+        ProgramCourseEnrollmentFactory.create(
             program_enrollment=program_enrollment_1,
             course_key=self.course_id,
             status='active',
