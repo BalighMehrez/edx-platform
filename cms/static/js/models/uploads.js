@@ -14,7 +14,7 @@ define(['backbone', 'underscore', 'gettext'], function(Backbone, _, gettext) {
         validate: function(attrs, options) {
             if (attrs.selectedFile && !this.checkTypeValidity(attrs.selectedFile)) {
                 return {
-                    message: _.template(gettext('Only <% fileTypes %> files can be uploaded. Please select a file ending in <%= fileExtensions %> to upload.'))(  // eslint-disable-line max-len
+                    message: _.template(gettext('Only <%= edx.HtmlUtils.template(fileTypes)  %> files can be uploaded. Please select a file ending in <%= fileExtensions %> to upload.'))(  // eslint-disable-line max-len
                     this.formatValidTypes()
                 ),
                     attributes: {selectedFile: true}
@@ -60,13 +60,16 @@ define(['backbone', 'underscore', 'gettext'], function(Backbone, _, gettext) {
                     fileExtensions: '.' + this.fileTypes()[0].toLowerCase()
                 };
             }
+          // eslint-disable-next-line vars-on-top
             var or = gettext('or');
+          // eslint-disable-next-line vars-on-top
             var formatTypes = function(types) {
-                return _.template('<% initial %> <% or %> <% last %>')({
-                    initial: _.initial(types).join(', '),
-                    or: or,
-                    last: _.last(types)
-                });
+                return _.template('<%= edx.HtmlUtils.ensureHtml(initial) %> <%= edx.HtmlUtils.ensureHtml(or) %> ' +
+                  '<%= edx.HtmlUtils.ensureHtml(last) %>')({
+                      initial: _.initial(types).join(', '),
+                      or: or,
+                      last: _.last(types)
+                  });
             };
             return {
                 fileTypes: formatTypes(this.fileTypes()),
